@@ -38,20 +38,33 @@ def commits_data():
     req = Request(
         api_url,
         headers={
-            "User-Agent": "Mozilla/5.0",
+            "User-Agent": "montoute-metrics-app",
             "Accept": "application/vnd.github+json"
         }
     )
 
-    response = urlopen(req)
-    raw_content = response.read()
-    commits_json = json.loads(raw_content.decode("utf-8"))
+    try:
+        with urlopen(req) as response:
+            raw = response.read().decode("utf-8")
+            commits_json = json.loads(raw)
 
-    # Compter les commits minute par minute (clé = YYYY-MM-DD HH:MM)
+    except HTTPError as e:
+        # ex: 403, 429...
+        return jsonify({"error": f"HTTPError {e.code}", "results": []}), 200
+    except URLError as e:
+        return jsonify({"error": f"URLError {str(e)}", "results": []}), 200
+    except Exception as e:
+        return jsonify({"error": f"Exception: {str(e)}", "results": []}), 200
+
+    # Si GitHub renvoie une erreur (dict), pas une liste
+    if isinstance(commits_json, dict):
+        msg = commits_json.get("message", "Erreur GitHub inconnue")
+        return jsonify({"error": msg, "results": []}), 200
+
     counter = {}
 
     for c in commits_json:
-        date_str = c.get("commit", {}).get("author", {}).get("date")  # Indice #2
+        date_str = c.get("commit", {}).get("author", {}).get("date")
         if not date_str:
             continue
 
@@ -60,12 +73,7 @@ def commits_data():
         counter[key] = counter.get(key, 0) + 1
 
     results = [{"minute": k, "count": counter[k]} for k in sorted(counter.keys())]
-    return jsonify(results=results)
-
-
-@app.route("/commits/")
-def commits_page():
-    return render_template("commits.html")
+    return jsonify({"error": None, "results": results})
 
   
 if __name__ == "__main__":
