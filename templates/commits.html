@@ -2,60 +2,112 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Commits - minute par minute</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Commits — Minute par minute</title>
+
     <script src="https://www.gstatic.com/charts/loader.js"></script>
 
     <style>
-      body { font-family: Arial, sans-serif; margin: 0; }
-      header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 14px 18px;
-        border-bottom: 1px solid #ddd;
+      :root{
+        --bg:#0b1020;
+        --card:#111a33;
+        --line:#2a355f;
+        --text:#e9eeff;
+        --muted:#a9b6ff;
+        --accent:#7c5cff;
+        --accent2:#22c55e;
       }
-      .id {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-      .id .name { font-size: 18px; font-weight: 700; }
-      .id .subtitle { font-size: 13px; opacity: 0.75; }
 
-      .actions { display: flex; gap: 10px; align-items: center; }
-      button {
-        padding: 8px 12px;
-        border: 1px solid #aaa;
-        background: #fff;
-        cursor: pointer;
-        border-radius: 8px;
-        font-weight: 600;
+      body{
+        margin:0;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        background: radial-gradient(900px 600px at 15% 10%, rgba(124,92,255,.25), transparent 60%),
+                    radial-gradient(900px 600px at 80% 70%, rgba(34,197,94,.18), transparent 55%),
+                    var(--bg);
+        color:var(--text);
       }
-      button:hover { filter: brightness(0.95); }
 
-      #wrap { padding: 16px 18px; }
-      #chart_div { width: 100%; max-width: 1100px; height: 520px; }
-      #status { margin-top: 10px; font-size: 13px; opacity: .8; }
+      header{
+        padding:18px 18px 10px;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:12px;
+      }
+
+      .title{
+        display:flex;
+        flex-direction:column;
+        gap:4px;
+      }
+      .title h1{
+        margin:0;
+        font-size:18px;
+        letter-spacing:.2px;
+      }
+      .title p{
+        margin:0;
+        font-size:13px;
+        color:var(--muted);
+      }
+
+      .btn{
+        border:1px solid rgba(255,255,255,.14);
+        background: linear-gradient(145deg, rgba(124,92,255,.28), rgba(34,197,94,.12));
+        color:var(--text);
+        padding:10px 12px;
+        border-radius:12px;
+        cursor:pointer;
+        font-weight:700;
+      }
+      .btn:hover{ filter:brightness(1.05); }
+
+      .wrap{
+        padding: 0 18px 22px;
+      }
+
+      .card{
+        background: rgba(17,26,51,.75);
+        border: 1px solid rgba(255,255,255,.10);
+        border-radius: 18px;
+        padding: 14px 14px 8px;
+        box-shadow: 0 18px 45px rgba(0,0,0,.35);
+        backdrop-filter: blur(10px);
+      }
+
+      #chart_div{
+        width: 100%;
+        max-width: 1100px;
+        height: 520px;
+        margin: 0 auto;
+      }
+
+      .status{
+        margin: 10px auto 0;
+        max-width: 1100px;
+        font-size: 13px;
+        color: var(--muted);
+        padding: 0 4px 8px;
+        min-height: 18px;
+      }
     </style>
   </head>
 
   <body>
     <header>
-      <div class="id">
-        <!-- Mets ton nom/prénom ici -->
-        <div class="name">Anthony-James Montoute</div>
-        <div class="subtitle">Métriques GitHub — Commits / minute</div>
+      <div class="title">
+        <h1>Anthony-James Montoute — Commits minute par minute</h1>
+        <p>Abscisse = numéro de minute (1,2,3,...) • Ordonnée = commits (graduation 1 → 2)</p>
       </div>
 
-      <div class="actions">
-        <button id="reloadBtn">Recharger</button>
-      </div>
+      <button class="btn" id="reloadBtn">Recharger</button>
     </header>
 
-    <div id="wrap">
-      <div id="chart_div"></div>
-      <div id="status"></div>
+    <div class="wrap">
+      <div class="card">
+        <div id="chart_div"></div>
+        <div class="status" id="status"></div>
+      </div>
     </div>
 
     <script>
@@ -64,79 +116,93 @@
 
       document.getElementById("reloadBtn").addEventListener("click", loadAndDraw);
 
-      function setStatus(txt) {
+      function setStatus(txt){
         document.getElementById("status").textContent = txt || "";
       }
 
-      function loadAndDraw() {
-        setStatus("Chargement des données...");
+      function loadAndDraw(){
+        setStatus("Chargement des données GitHub…");
         fetch("/commits-data/")
           .then(r => r.json())
-          .then(data => {
-            const rows = data.results || [];
-            setStatus(rows.length ? `Données chargées : ${rows.length} commits (brut).` : "Aucune donnée.");
+          .then(payload => {
+            const rows = payload.results || [];
+            if (!rows.length){
+              setStatus("Aucune donnée reçue (ou GitHub rate-limit).");
+              document.getElementById("chart_div").innerHTML = "";
+              return;
+            }
             drawChart(rows);
           })
           .catch(err => {
             console.error(err);
-            setStatus("Erreur : impossible de charger les données.");
-            document.getElementById("chart_div").innerText = "Erreur de chargement.";
+            setStatus("Erreur : impossible de récupérer /commits-data/");
           });
       }
 
-     function drawChart(rows) {
-  // Agrégation minute → nombre de commits
-  const counter = {};
+      function drawChart(rows){
+        // rows = [{ minute: "YYYY-MM-DD HH:MM" }, ...]
+        // On compte commits par minute
+        const counter = {};
+        rows.forEach(r => {
+          counter[r.minute] = (counter[r.minute] || 0) + 1;
+        });
 
-  rows.forEach(r => {
-    counter[r.minute] = (counter[r.minute] || 0) + 1;
-  });
+        // On trie les minutes chronologiquement (string YYYY-MM-DD HH:MM se trie bien)
+        const keys = Object.keys(counter).sort();
 
-  // Transformation en tableau trié chronologiquement
-  const minutes = Object.keys(counter)
-    .map(m => new Date(m.replace(" ", "T"))) // "YYYY-MM-DD HH:MM" → Date
-    .sort((a, b) => a - b);
+        // On transforme en (minuteIndex: 1..N) + commits
+        const dataTable = new google.visualization.DataTable();
+        dataTable.addColumn("number", "Minute (n°)");
+        dataTable.addColumn("number", "Commits");
 
-  const dataTable = new google.visualization.DataTable();
-  dataTable.addColumn("datetime", "Minute");
-  dataTable.addColumn("number", "Commits / minute");
+        let clipped = 0;
+        keys.forEach((k, i) => {
+          let c = counter[k];
+          if (c > 2) { c = 2; clipped++; } // tu as demandé graduation 1→2
+          dataTable.addRow([i + 1, c]);
+        });
 
-  minutes.forEach(d => {
-    const key =
-      d.getFullYear() + "-" +
-      String(d.getMonth() + 1).padStart(2, "0") + "-" +
-      String(d.getDate()).padStart(2, "0") + " " +
-      String(d.getHours()).padStart(2, "0") + ":" +
-      String(d.getMinutes()).padStart(2, "0");
+        setStatus(
+          `Minutes affichées: ${keys.length} • Valeurs commits limitées à 2: ${clipped} minute(s).`
+        );
 
-    dataTable.addRow([d, counter[key]]);
-  });
+        const options = {
+          title: "Commits (ordonnée 1→2) en fonction du numéro de minute",
+          titleTextStyle: { color: "#e9eeff", fontSize: 14, bold: true },
+          backgroundColor: "transparent",
+          legend: { position: "none" },
 
-  const options = {
-    title: "Nombre de commits ordonnés par minute",
-    legend: { position: "none" },
-    hAxis: {
-      title: "Temps (minute)",
-      format: "HH:mm",
-      gridlines: { count: 10 }
-    },
-    vAxis: {
-      title: "Commits / minute",
-      minValue: 0,
-      format: "0"
-    }
-  };
+          // Axes
+          hAxis: {
+            title: "Minute (1, 2, 3, ...)",
+            textStyle: { color: "#a9b6ff" },
+            titleTextStyle: { color: "#a9b6ff" },
+            gridlines: { color: "rgba(255,255,255,.08)" },
+            minorGridlines: { color: "rgba(255,255,255,.04)" }
+          },
+          vAxis: {
+            title: "Commits (gradué 1 à 2)",
+            viewWindow: { min: 0, max: 2 },
+            ticks: [0, 1, 2],
+            textStyle: { color: "#a9b6ff" },
+            titleTextStyle: { color: "#a9b6ff" },
+            gridlines: { color: "rgba(255,255,255,.10)" }
+          },
 
-  const chart = new google.visualization.LineChart(
-    document.getElementById("chart_div")
-  );
-  chart.draw(dataTable, options);
-}
-      function shouldUseShortLabels(minutes) {
-        // si toutes les minutes partagent la même date YYYY-MM-DD => labels HH:MM
-        if (minutes.length === 0) return true;
-        const firstDate = minutes[0].slice(0, 10);
-        return minutes.every(m => m.slice(0, 10) === firstDate);
+          // Style de la série
+          series: {
+            0: {
+              color: "#7c5cff",       // violet
+              lineWidth: 4,
+              pointSize: 6
+            }
+          },
+
+          chartArea: { left: 70, top: 60, right: 20, bottom: 80 }
+        };
+
+        const chart = new google.visualization.LineChart(document.getElementById("chart_div"));
+        chart.draw(dataTable, options);
       }
     </script>
   </body>
