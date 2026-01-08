@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Laisser un message</title>
+  <style>
+    :root{
+      --bg1:#0b1b14;
+      --bg2:#123424;
+      --gold:#d7b85c;
+      --gold2:#f3dd8a;
+      --card: rgba(10, 18, 14, .72);
+      --text:#eaf5ef;
+      --muted:#b7d6c5;
+      --danger:#ff6b6b;
+      --ok:#47d18c;
+      --ring: rgba(215,184,92,.35);
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      overflow-x:hidden;
+
+      /* Fond “Zelda-like” : forêt + éclat doré + motif géométrique type “triforce” */
+      background:
+        radial-gradient(900px 600px at 18% 15%, rgba(215,184,92,.20), transparent 60%),
+        radial-gradient(900px 600px at 85% 70%, rgba(71,209,140,.14), transparent 55%),
+        linear-gradient(160deg, var(--bg1), var(--bg2));
+    }
+
+    /* Motif “triforce-like” (triangles) en CSS, léger */
+    body::before{
+      content:"";
+      position:fixed;
+      inset:-40px;
+      pointer-events:none;
+      opacity:.14;
+      background-image:
+        linear-gradient(60deg, rgba(243,221,138,.35) 12%, transparent 12% 88%, rgba(243,221,138,.35) 88%),
+        linear-gradient(-60deg, rgba(243,221,138,.35) 12%, transparent 12% 88%, rgba(243,221,138,.35) 88%),
+        linear-gradient(0deg, rgba(243,221,138,.35) 12%, transparent 12% 88%, rgba(243,221,138,.35) 88%);
+      background-size: 64px 64px;
+      filter: blur(.2px);
+    }
+
+    .wrap{
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:28px 16px;
+      position:relative;
+    }
+
+    .card{
+      width:min(920px, 100%);
+      background: var(--card);
+      border:1px solid rgba(215,184,92,.30);
+      border-radius:18px;
+      box-shadow:
+        0 18px 50px rgba(0,0,0,.45),
+        0 0 0 1px rgba(0,0,0,.25) inset;
+      overflow:hidden;
+      backdrop-filter: blur(10px);
+    }
+
+    .header{
+      padding:22px 22px 14px;
+      border-bottom:1px solid rgba(215,184,92,.25);
+      display:flex;
+      gap:14px;
+      align-items:center;
+    }
+
+    .crest{
+      width:46px; height:46px;
+      border-radius:12px;
+      background:
+        radial-gradient(circle at 30% 30%, rgba(243,221,138,.55), rgba(215,184,92,.18) 55%, transparent 70%),
+        linear-gradient(145deg, rgba(215,184,92,.35), rgba(71,209,140,.10));
+      border:1px solid rgba(215,184,92,.35);
+      box-shadow: 0 10px 25px rgba(0,0,0,.35);
+      display:grid;
+      place-items:center;
+      position:relative;
+    }
+
+    /* Petit symbole “triangles” minimal */
+    .crest::before{
+      content:"";
+      width:18px; height:18px;
+      background:
+        conic-gradient(from 0deg, transparent 0 25%, rgba(243,221,138,.95) 0 33%, transparent 0 58%, rgba(243,221,138,.95) 0 66%, transparent 0 91%, rgba(243,221,138,.95) 0);
+      mask: radial-gradient(circle, #000 58%, transparent 60%);
+      opacity:.95;
+    }
+
+    h1{
+      font-size:18px;
+      margin:0;
+      letter-spacing:.3px;
+    }
+    .sub{
+      margin:4px 0 0;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.35;
+    }
+
+    .content{
+      display:grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap:18px;
+      padding:18px 22px 22px;
+    }
+
+    @media (max-width: 860px){
+      .content{ grid-template-columns:1fr; }
+    }
+
+    .panel{
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
+      padding:16px;
+      background: rgba(0,0,0,.20);
+    }
+
+    label{
+      display:block;
+      font-size:12px;
+      color:var(--muted);
+      margin:10px 0 6px;
+    }
+
+    input, textarea{
+      width:100%;
+      border-radius:12px;
+      border:1px solid rgba(215,184,92,.25);
+      background: rgba(0,0,0,.30);
+      color:var(--text);
+      padding:12px 12px;
+      outline:none;
+      transition: .18s ease;
+      box-shadow: 0 0 0 0 rgba(0,0,0,0);
+    }
+    textarea{ min-height:140px; resize: vertical; }
+
+    input:focus, textarea:focus{
+      border-color: rgba(243,221,138,.55);
+      box-shadow: 0 0 0 4px var(--ring);
+    }
+
+    .row{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+    }
+    @media (max-width: 520px){
+      .row{ grid-template-columns:1fr; }
+    }
+
+    .actions{
+      margin-top:14px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    button{
+      cursor:pointer;
+      border:1px solid rgba(215,184,92,.35);
+      background: linear-gradient(145deg, rgba(215,184,92,.22), rgba(71,209,140,.08));
+      color: var(--text);
+      padding:10px 14px;
+      border-radius:12px;
+      font-weight:600;
+      letter-spacing:.2px;
+      transition:.18s ease;
+    }
+    button:hover{ transform: translateY(-1px); }
+    button:active{ transform: translateY(0); }
+
+    .ghost{
+      background: transparent;
+      border:1px solid rgba(255,255,255,.14);
+      color: var(--muted);
+    }
+
+    .status{
+      margin-top:12px;
+      font-size:13px;
+      color:var(--muted);
+      min-height:18px;
+    }
+    .status.ok{ color: var(--ok); }
+    .status.err{ color: var(--danger); }
+
+    .messages h2{
+      margin:0 0 10px;
+      font-size:14px;
+      color: var(--gold2);
+      letter-spacing:.3px;
+    }
+
+    .list{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      max-height: 330px;
+      overflow:auto;
+      padding-right:4px;
+    }
+
+    .msg{
+      border:1px solid rgba(255,255,255,.09);
+      border-radius:12px;
+      padding:10px 10px;
+      background: rgba(0,0,0,.22);
+    }
+    .meta{
+      display:flex;
+      gap:10px;
+      align-items:baseline;
+      flex-wrap:wrap;
+      margin-bottom:6px;
+    }
+    .name{
+      font-weight:700;
+      color: var(--gold2);
+      font-size:13px;
+    }
+    .time{
+      font-size:12px;
+      color: var(--muted);
+      opacity:.9;
+    }
+    .text{
+      font-size:13px;
+      line-height:1.45;
+      white-space:pre-wrap;
+      color: var(--text);
+    }
+
+    .footer-note{
+      padding:0 22px 18px;
+      color: rgba(234,245,239,.70);
+      font-size:12px;
+    }
+    .footer-note code{
+      color: var(--gold2);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="header">
+        <div class="crest" aria-hidden="true"></div>
+        <div>
+          <h1>Scellé du Messager</h1>
+          <p class="sub">Laisse ton nom, ton prénom et ton message. (Stocké localement dans ton navigateur)</p>
+        </div>
+      </div>
+
+      <div class="content">
+        <!-- Formulaire -->
+        <div class="panel">
+          <form id="msgForm" autocomplete="off">
+            <div class="row">
+              <div>
+                <label for="nom">Nom</label>
+                <input id="nom" name="nom" type="text" placeholder="Ex: Dupont" required minlength="2" />
+              </div>
+              <div>
+                <label for="prenom">Prénom</label>
+                <input id="prenom" name="prenom" type="text" placeholder="Ex: Lina" required minlength="2" />
+              </div>
+            </div>
+
+            <label for="message">Message</label>
+            <textarea id="message" name="message" placeholder="Écris ton message ici..." required minlength="3"></textarea>
+
+            <div class="actions">
+              <button type="submit">Envoyer le message</button>
+              <button type="button" class="ghost" id="clearBtn">Effacer le formulaire</button>
+              <button type="button" class="ghost" id="wipeAllBtn" title="Supprime tous les messages enregistrés">Tout supprimer</button>
+            </div>
+
+            <div id="status" class="status" role="status" aria-live="polite"></div>
+          </form>
+        </div>
+
+        <!-- Liste des messages -->
+        <div class="panel messages">
+          <h2>Messages reçus</h2>
+          <div id="list" class="list" aria-label="Liste des messages"></div>
+        </div>
+      </div>
+
+      <div class="footer-note">
+        Astuce : pour l’envoyer à un serveur au lieu du <code>localStorage</code>, remplace la fonction <code>saveMessage()</code> par un <code>fetch()</code> vers ton API.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "zelda_like_messages_v1";
+
+    const form = document.getElementById("msgForm");
+    const nomEl = document.getElementById("nom");
+    const prenomEl = document.getElementById("prenom");
+    const msgEl = document.getElementById("message");
+    const statusEl = document.getElementById("status");
+    const listEl = document.getElementById("list");
+
+    const clearBtn = document.getElementById("clearBtn");
+    const wipeAllBtn = document.getElementById("wipeAllBtn");
+
+    function setStatus(text, type = "") {
+      statusEl.className = "status" + (type ? " " + type : "");
+      statusEl.textContent = text || "";
+    }
+
+    function loadMessages() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      } catch {
+        return [];
+      }
+    }
+
+    function saveMessages(messages) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function render() {
+      const messages = loadMessages().slice().reverse(); // plus récent en haut
+      listEl.innerHTML = "";
+
+      if (messages.length === 0) {
+        listEl.innerHTML = `<div class="msg"><div class="text" style="color:rgba(234,245,239,.7)">Aucun message pour l’instant.</div></div>`;
+        return;
+      }
+
+      for (const m of messages) {
+        const div = document.createElement("div");
+        div.className = "msg";
+        div.innerHTML = `
+          <div class="meta">
+            <div class="name">${escapeHtml(m.prenom)} ${escapeHtml(m.nom)}</div>
+            <div class="time">${new Date(m.createdAt).toLocaleString("fr-FR")}</div>
+          </div>
+          <div class="text">${escapeHtml(m.message)}</div>
+        `;
+        listEl.appendChild(div);
+      }
+    }
+
+    function saveMessage({ nom, prenom, message }) {
+      const messages = loadMessages();
+      messages.push({
+        nom: nom.trim(),
+        prenom: prenom.trim(),
+        message: message.trim(),
+        createdAt: Date.now()
+      });
+      saveMessages(messages);
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      setStatus("");
+
+      const nom = nomEl.value;
+      const prenom = prenomEl.value;
+      const message = msgEl.value;
+
+      if (nom.trim().length < 2 || prenom.trim().length < 2 || message.trim().length < 3) {
+        setStatus("Merci de remplir correctement tous les champs.", "err");
+        return;
+      }
+
+      saveMessage({ nom, prenom, message });
+      setStatus("Message envoyé ✅", "ok");
+
+      form.reset();
+      nomEl.focus();
+      render();
+    });
+
+    clearBtn.addEventListener("click", () => {
+      form.reset();
+      setStatus("Formulaire effacé.", "");
+      nomEl.focus();
+    });
+
+    wipeAllBtn.addEventListener("click", () => {
+      localStorage.removeItem(STORAGE_KEY);
+      setStatus("Tous les messages ont été supprimés.", "");
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>
