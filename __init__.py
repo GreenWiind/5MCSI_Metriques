@@ -9,7 +9,7 @@ app = Flask(__name__)
 
 @app.route("/contact/")
 def contact():
-    return render_template("contact_zelda.html")
+    return render_template("contact.html")
 
 @app.route('/tawarano/')
 def meteo():
