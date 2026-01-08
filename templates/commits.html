@@ -84,53 +84,54 @@
           });
       }
 
-      function drawChart(rows) {
-        // Agrégation: minute -> nb commits
-        const counter = {};
-        rows.forEach(r => {
-          // r.minute = "YYYY-MM-DD HH:MM"
-          counter[r.minute] = (counter[r.minute] || 0) + 1;
-        });
+     function drawChart(rows) {
+  // Agrégation minute → nombre de commits
+  const counter = {};
 
-        // Transforme en tableau trié
-        const minutes = Object.keys(counter).sort();
+  rows.forEach(r => {
+    counter[r.minute] = (counter[r.minute] || 0) + 1;
+  });
 
-        // Google Charts DataTable
-        const dataTable = new google.visualization.DataTable();
-        dataTable.addColumn("string", "Minute");
-        dataTable.addColumn("number", "Commits / minute");
+  // Transformation en tableau trié chronologiquement
+  const minutes = Object.keys(counter)
+    .map(m => new Date(m.replace(" ", "T"))) // "YYYY-MM-DD HH:MM" → Date
+    .sort((a, b) => a - b);
 
-        // Pour éviter un X illisible, on affiche seulement HH:MM si tout est sur une journée,
-        // sinon on garde YYYY-MM-DD HH:MM (tu peux forcer l'un ou l'autre)
-        const useShortLabel = shouldUseShortLabels(minutes);
+  const dataTable = new google.visualization.DataTable();
+  dataTable.addColumn("datetime", "Minute");
+  dataTable.addColumn("number", "Commits / minute");
 
-        minutes.forEach(m => {
-          const label = useShortLabel ? m.slice(11) : m; // "HH:MM" ou full
-          dataTable.addRow([label, Number(counter[m])]);
-        });
+  minutes.forEach(d => {
+    const key =
+      d.getFullYear() + "-" +
+      String(d.getMonth() + 1).padStart(2, "0") + "-" +
+      String(d.getDate()).padStart(2, "0") + " " +
+      String(d.getHours()).padStart(2, "0") + ":" +
+      String(d.getMinutes()).padStart(2, "0");
 
-        const options = {
-          title: "Nombre de commits par minute (Commits / minute)",
-          legend: { position: "none" },
-          vAxis: {
-            title: "Commits / minute",
-            minValue: 0,
-            format: "0"
-          },
-          hAxis: {
-            title: "Minute",
-            slantedText: true,
-            slantedTextAngle: 45,
-            // Montre moins de labels si beaucoup de points
-            showTextEvery: Math.max(1, Math.floor(minutes.length / 12))
-          },
-          bar: { groupWidth: "85%" }
-        };
+    dataTable.addRow([d, counter[key]]);
+  });
 
-        const chart = new google.visualization.ColumnChart(document.getElementById("chart_div"));
-        chart.draw(dataTable, options);
-      }
+  const options = {
+    title: "Nombre de commits ordonnés par minute",
+    legend: { position: "none" },
+    hAxis: {
+      title: "Temps (minute)",
+      format: "HH:mm",
+      gridlines: { count: 10 }
+    },
+    vAxis: {
+      title: "Commits / minute",
+      minValue: 0,
+      format: "0"
+    }
+  };
 
+  const chart = new google.visualization.LineChart(
+    document.getElementById("chart_div")
+  );
+  chart.draw(dataTable, options);
+}
       function shouldUseShortLabels(minutes) {
         // si toutes les minutes partagent la même date YYYY-MM-DD => labels HH:MM
         if (minutes.length === 0) return true;
