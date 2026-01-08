@@ -30,6 +30,43 @@ def mongraphique():
 @app.route('/')
 def hello_world():
     return render_template('hello.html') #comm
+
+@app.route("/commits-data/")
+def commits_data():
+    api_url = "https://api.github.com/repos/OpenRSI/5MCSI_Metriques/commits?per_page=100"
+
+    req = Request(
+        api_url,
+        headers={
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "application/vnd.github+json"
+        }
+    )
+
+    response = urlopen(req)
+    raw_content = response.read()
+    commits_json = json.loads(raw_content.decode("utf-8"))
+
+    # Compter les commits minute par minute (clé = YYYY-MM-DD HH:MM)
+    counter = {}
+
+    for c in commits_json:
+        date_str = c.get("commit", {}).get("author", {}).get("date")  # Indice #2
+        if not date_str:
+            continue
+
+        dt = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ")
+        key = dt.strftime("%Y-%m-%d %H:%M")
+        counter[key] = counter.get(key, 0) + 1
+
+    results = [{"minute": k, "count": counter[k]} for k in sorted(counter.keys())]
+    return jsonify(results=results)
+
+
+@app.route("/commits/")
+def commits_page():
+    return render_template("commits.html")
+
   
 if __name__ == "__main__":
   app.run(debug=True)
