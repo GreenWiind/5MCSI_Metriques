@@ -1,50 +1,141 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <title>Commits minute par minute</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Commits - minute par minute</title>
     <script src="https://www.gstatic.com/charts/loader.js"></script>
+
+    <style>
+      body { font-family: Arial, sans-serif; margin: 0; }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 18px;
+        border-bottom: 1px solid #ddd;
+      }
+      .id {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .id .name { font-size: 18px; font-weight: 700; }
+      .id .subtitle { font-size: 13px; opacity: 0.75; }
+
+      .actions { display: flex; gap: 10px; align-items: center; }
+      button {
+        padding: 8px 12px;
+        border: 1px solid #aaa;
+        background: #fff;
+        cursor: pointer;
+        border-radius: 8px;
+        font-weight: 600;
+      }
+      button:hover { filter: brightness(0.95); }
+
+      #wrap { padding: 16px 18px; }
+      #chart_div { width: 100%; max-width: 1100px; height: 520px; }
+      #status { margin-top: 10px; font-size: 13px; opacity: .8; }
+    </style>
   </head>
 
   <body>
-    <h2>Nombre de commits par minute</h2>
-    <div id="chart_div" style="width: 900px; height: 500px;"></div>
+    <header>
+      <div class="id">
+        <!-- Mets ton nom/prénom ici -->
+        <div class="name">Anthony-James Montoute</div>
+        <div class="subtitle">Métriques GitHub — Commits / minute</div>
+      </div>
+
+      <div class="actions">
+        <button id="reloadBtn">Recharger</button>
+      </div>
+    </header>
+
+    <div id="wrap">
+      <div id="chart_div"></div>
+      <div id="status"></div>
+    </div>
 
     <script>
       google.charts.load("current", { packages: ["corechart"] });
-      google.charts.setOnLoadCallback(loadData);
+      google.charts.setOnLoadCallback(loadAndDraw);
 
-      function loadData() {
+      document.getElementById("reloadBtn").addEventListener("click", loadAndDraw);
+
+      function setStatus(txt) {
+        document.getElementById("status").textContent = txt || "";
+      }
+
+      function loadAndDraw() {
+        setStatus("Chargement des données...");
         fetch("/commits-data/")
           .then(r => r.json())
-          .then(data => drawChart(data.results));
+          .then(data => {
+            const rows = data.results || [];
+            setStatus(rows.length ? `Données chargées : ${rows.length} commits (brut).` : "Aucune donnée.");
+            drawChart(rows);
+          })
+          .catch(err => {
+            console.error(err);
+            setStatus("Erreur : impossible de charger les données.");
+            document.getElementById("chart_div").innerText = "Erreur de chargement.";
+          });
       }
 
       function drawChart(rows) {
+        // Agrégation: minute -> nb commits
         const counter = {};
-
         rows.forEach(r => {
+          // r.minute = "YYYY-MM-DD HH:MM"
           counter[r.minute] = (counter[r.minute] || 0) + 1;
         });
 
+        // Transforme en tableau trié
+        const minutes = Object.keys(counter).sort();
+
+        // Google Charts DataTable
         const dataTable = new google.visualization.DataTable();
         dataTable.addColumn("string", "Minute");
-        dataTable.addColumn("number", "Commits");
+        dataTable.addColumn("number", "Commits / minute");
 
-        Object.keys(counter).sort().forEach(min => {
-          dataTable.addRow([min, counter[min]]);
+        // Pour éviter un X illisible, on affiche seulement HH:MM si tout est sur une journée,
+        // sinon on garde YYYY-MM-DD HH:MM (tu peux forcer l'un ou l'autre)
+        const useShortLabel = shouldUseShortLabels(minutes);
+
+        minutes.forEach(m => {
+          const label = useShortLabel ? m.slice(11) : m; // "HH:MM" ou full
+          dataTable.addRow([label, Number(counter[m])]);
         });
 
-        const chart = new google.visualization.ColumnChart(
-          document.getElementById("chart_div")
-        );
-
-        chart.draw(dataTable, {
-          title: "Commits GitHub (minute par minute)",
+        const options = {
+          title: "Nombre de commits par minute (Commits / minute)",
           legend: { position: "none" },
-          hAxis: { slantedText: true, slantedTextAngle: 45 },
-          vAxis: { title: "Nombre de commits" }
-        });
+          vAxis: {
+            title: "Commits / minute",
+            minValue: 0,
+            format: "0"
+          },
+          hAxis: {
+            title: "Minute",
+            slantedText: true,
+            slantedTextAngle: 45,
+            // Montre moins de labels si beaucoup de points
+            showTextEvery: Math.max(1, Math.floor(minutes.length / 12))
+          },
+          bar: { groupWidth: "85%" }
+        };
+
+        const chart = new google.visualization.ColumnChart(document.getElementById("chart_div"));
+        chart.draw(dataTable, options);
+      }
+
+      function shouldUseShortLabels(minutes) {
+        // si toutes les minutes partagent la même date YYYY-MM-DD => labels HH:MM
+        if (minutes.length === 0) return true;
+        const firstDate = minutes[0].slice(0, 10);
+        return minutes.every(m => m.slice(0, 10) === firstDate);
       }
     </script>
   </body>
