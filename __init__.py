@@ -33,47 +33,30 @@ def hello_world():
 
 @app.route("/commits-data/")
 def commits_data():
-    api_url = "https://api.github.com/repos/OpenRSI/5MCSI_Metriques/commits?per_page=100"
+    url = "https://api.github.com/repos/OpenRSI/5MCSI_Metriques/commits?per_page=100"
 
-    req = Request(
-        api_url,
-        headers={
-            "User-Agent": "montoute-metrics-app",
-            "Accept": "application/vnd.github+json"
-        }
-    )
+    response = urlopen(url)
+    raw_content = response.read()
+    commits_json = json.loads(raw_content.decode("utf-8"))
 
-    try:
-        with urlopen(req) as response:
-            raw = response.read().decode("utf-8")
-            commits_json = json.loads(raw)
+    results = []
 
-    except HTTPError as e:
-        # ex: 403, 429...
-        return jsonify({"error": f"HTTPError {e.code}", "results": []}), 200
-    except URLError as e:
-        return jsonify({"error": f"URLError {str(e)}", "results": []}), 200
-    except Exception as e:
-        return jsonify({"error": f"Exception: {str(e)}", "results": []}), 200
-
-    # Si GitHub renvoie une erreur (dict), pas une liste
-    if isinstance(commits_json, dict):
-        msg = commits_json.get("message", "Erreur GitHub inconnue")
-        return jsonify({"error": msg, "results": []}), 200
-
-    counter = {}
-
-    for c in commits_json:
-        date_str = c.get("commit", {}).get("author", {}).get("date")
+    for commit in commits_json:
+        date_str = commit.get("commit", {}).get("author", {}).get("date")
         if not date_str:
             continue
 
+        # "2024-02-11T11:57:27Z"
         dt = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ")
-        key = dt.strftime("%Y-%m-%d %H:%M")
-        counter[key] = counter.get(key, 0) + 1
 
-    results = [{"minute": k, "count": counter[k]} for k in sorted(counter.keys())]
-    return jsonify({"error": None, "results": results})
+        results.append({
+            "minute": dt.strftime("%Y-%m-%d %H:%M")
+        })
+
+    return jsonify(results=results)
+@app.route("/commits/")
+def commits():
+    return render_template("commits.html")
 
   
 if __name__ == "__main__":
